@@ -5,40 +5,43 @@ namespace BookingApiControl.Services;
 
 public class AuthService
 {
-private readonly AppDbContext _db;
-private readonly JwtTokenService _jwt;
+    private readonly AppDbContext _db;
+    private readonly JwtTokenService _jwt;
 
-public AuthService(AppDbContext db, JwtTokenService jwt) { _db = db;  _jwt = jwt; }
+    public AuthService(AppDbContext db, JwtTokenService jwt) { _db = db;  _jwt = jwt; }
 
-public bool Register(RegisterRequest request)
-{
-    var userExists = _db.Users.Any(x => x.Email == request.Email);
-    if (userExists) return false;
-    var user = new User
+    
+    
+    public bool Register(RegisterRequest request)
     {
-        Id = Guid.NewGuid(),
-        Name = request.Name,
-        Email = request.Email,
-        PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-        Role = Role.User.ToString()
-    };
+        var userExists = _db.Users.Any(x => x.Email == request.Email);
+        if (userExists) return false;
 
-    _db.Users.Add(user);
-    _db.SaveChanges();
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Name = request.Name,
+            Email = request.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            Role = Role.User.ToString()
+        };
 
-    return true;
-}
+        _db.Users.Add(user);
+        _db.SaveChanges();
 
-public string? Login(LoginRequest request)
-{
-    var user = _db.Users.FirstOrDefault(x => x.Email == request.Email);
-    if (user == null) return null;
+            return true;
+    }
 
-    bool passwordValid =
-        BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+    
 
-    if (!passwordValid) return null;
+    public string? Login(LoginRequest request)
+    {
+        var user = _db.Users.FirstOrDefault(x => x.Email == request.Email);
+        if (user == null) return null;
 
-    return _jwt.CreateToken(user);
-}
+        bool passwordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+        if (!passwordValid) return null;
+
+            return _jwt.CreateToken(user);
+    }
 }

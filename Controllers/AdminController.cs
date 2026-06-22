@@ -1,8 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using BookingApiControl.Data;
-
-using BookingApiControl.Models.Enums;
-
+using BookingApiControl.Services;
 using Microsoft.AspNetCore.Authorization;
 
 namespace BookingApiControl.Controllers;
@@ -11,35 +8,58 @@ namespace BookingApiControl.Controllers;
 [Route("api/admin")]
 public class AdminController : ControllerBase
 {
-    private readonly AppDbContext _db;
-    public AdminController(AppDbContext db) { _db = db; }
+    private readonly AdminService _adminService;
+
+    public AdminController(AdminService adminService) { _adminService = adminService; }
+
+
 
     [Authorize(Roles = "Admin")]
     [HttpGet("users")]
-    public IActionResult Get()
+    public IActionResult ListUsers()
     {
-    var users = _db.Users.ToList();
-    return Ok(users);
+        var users = _adminService.GetUsers();
+            return Ok(users);
     }
+
 
     [Authorize(Roles = "Admin")]
-    [HttpPost("users")]
-    public IActionResult Post(AdminRegisterRequest request) 
+    [HttpGet("bookings")]
+    public IActionResult ListBookings()
     {
-        var usExists = _db.Users.Any(w => w.Email == request.Email);  //Есть ли подходящий email в БД?
-        if (usExists) return BadRequest("User already exists");       //Пользователь существует
-        if (!Enum.IsDefined(typeof(Role), request.Role)) { return BadRequest("Invalid role"); }
-        var newUser = new User                                        
-            {
-                Id = Guid.NewGuid(),
-                Name = request.Name,
-                Email = request.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Role = request.Role
-            };
-        _db.Users.Add(newUser);
-        _db.SaveChanges();
-        return Ok("User register success");   //User создан успешно
+        var bookings = _adminService.GetListBookings();
+        return Ok(bookings);
+    }
+    
+
+    //Подтверждение бронирования
+    [Authorize(Roles = "Admin")]
+    [HttpPut("bookings/{BookingId}/approve")]
+    public IActionResult BookingsApprove(Guid BookingId)
+    {
+        var bookingsApprove = _adminService.BookingsApproveUser(BookingId);
+        if (!bookingsApprove.Success) return BadRequest(bookingsApprove.Error);
+            return Ok(bookingsApprove);
     }
 
+
+    //Отмена бронирования
+    [Authorize(Roles = "Admin")]
+    [HttpPut("bookings/{BookingId}/reject")]
+    public IActionResult BookingsReject(Guid BookingId)
+    {
+        var bookingsRejectUser = _adminService.BookingsRejectUser(BookingId);
+        if (!bookingsRejectUser.Success) return BadRequest(bookingsRejectUser.Error);
+        return Ok(bookingsRejectUser);
+    }
+
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("users/{userId}")]
+    public IActionResult DeleteUser(Guid userId)
+    {
+        var result = _adminService.DelUserById(userId);
+        if (!result) return NotFound("User not Fount Id");
+            return Ok("User delete Success");
+    }
 }

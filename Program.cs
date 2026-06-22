@@ -25,6 +25,8 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
 
 builder.Services.AddScoped<AuthService>(); //AuthService.cs
 builder.Services.AddScoped<RoomService>(); //RoomService.cs
+builder.Services.AddScoped<AdminService>(); //AdminService.cs
+builder.Services.AddScoped<BookingService>(); //BookingService.cs
 
 //JWT Auth
 var jwtKey = builder.Configuration.GetValue<string>("Jwt:Key");
