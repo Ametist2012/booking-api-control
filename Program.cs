@@ -23,6 +23,10 @@ builder.Services.AddControllers(); //Добавляем для работы Cont
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnectionDb")));
 
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IRoomRepository, RoomRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
 builder.Services.AddScoped<AuthService>(); //AuthService.cs
 builder.Services.AddScoped<RoomService>(); //RoomService.cs
 builder.Services.AddScoped<AdminService>(); //AdminService.cs

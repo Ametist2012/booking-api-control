@@ -5,29 +5,38 @@ namespace BookingApiControl.Services;
 
 public class RoomService
 {
-    private readonly AppDbContext _db;
-
-    public RoomService(AppDbContext db) { _db = db; }
+    public readonly IBookingRepository _bookingRepository;
+    private readonly IRoomRepository _roomRepository;
+    private readonly IUserRepository _userRepository;
+    public RoomService(
+        IBookingRepository bookingRepository,
+        IRoomRepository roomRepository,
+        IUserRepository userRepository) 
+    {   
+        _bookingRepository = bookingRepository; 
+        _roomRepository = roomRepository;
+        _userRepository = userRepository;
+    }
 
 
 
     public List<Room> GetRoomList()
     {
-        return _db.Rooms.ToList();
+        return _roomRepository.GetAll(); 
     }
 
 
 
     public Room? GetRoomById(Guid id)
     {
-        return _db.Rooms.FirstOrDefault(r => r.Id == id);
+        return _roomRepository.GetById(id);
     }
 
 
 
     public bool CreateRoom(CreateRoomRequest request)
     {
-        var roomExists = _db.Rooms.Any(x => x.Number == request.Number);
+        var roomExists = _roomRepository.NumberExits(request.Number); 
         if (roomExists) return false;
 
         var room = new Room
@@ -40,16 +49,16 @@ public class RoomService
             Description = request.Description
         };
 
-        _db.Rooms.Add(room);
-        _db.SaveChanges();
+        _roomRepository.Add(room);
+        _roomRepository.SaveChanges();
             return true;
     }
 
 
 
     public bool EditingRoomById(Guid id, EditingRoomRequest request)
-    {
-        var room = _db.Rooms.FirstOrDefault(r => r.Id == id);
+    {   
+        var room = _roomRepository.GetById(id);
         if (room == null) return false;
 
         if (request.Number != null)
@@ -67,7 +76,7 @@ public class RoomService
         if (!string.IsNullOrWhiteSpace(request.Description))
             room.Description = request.Description;
 
-        _db.SaveChanges();
+        _roomRepository.SaveChanges();
             return true;
     }
 
@@ -75,12 +84,11 @@ public class RoomService
 
     public bool DeleteRoomById(Guid id)
     {
-        var room = _db.Rooms.FirstOrDefault(r => r.Id == id);
+        var room = _roomRepository.GetById(id);
         if (room == null) return false;
         
-        _db.Rooms.Remove(room);
-        _db.SaveChanges();
-
+        _roomRepository.Delete(room);
+        _roomRepository.SaveChanges();
             return true;
 
     }

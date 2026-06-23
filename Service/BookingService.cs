@@ -1,4 +1,3 @@
-using BookingApiControl.Data;
 using BookingApiControl.Models.Enums;
 
 
@@ -7,21 +6,28 @@ namespace BookingApiControl.Services;
 
 public class BookingService
 {
-    public readonly AppDbContext _db;
-
-    public BookingService(AppDbContext db) { _db = db;}
+    public readonly IBookingRepository _bookingRepository;
+    private readonly IRoomRepository _roomRepository;
+    private readonly IUserRepository _userRepository;
+    public BookingService(
+        IBookingRepository bookingRepository,
+        IRoomRepository roomRepository,
+        IUserRepository userRepository) 
+    {   
+        _bookingRepository = bookingRepository; 
+        _roomRepository = roomRepository;
+        _userRepository = userRepository;
+    }
 
 
     public List<Booking> GetBookingsCurUserById(Guid userid)
     {
-       return _db.Bookings.Where(w => w.UserId == userid).ToList();
+        return _bookingRepository.GetByUserId(userid); 
     }
 
-
-
-    public List<Booking> GetBookingByIdCurUser(Guid userid, Guid id)
+    public Booking? GetBookingByIdCurUser(Guid id, Guid userid)
     {
-        return _db.Bookings.Where(x => x.UserId == userid && x.Id == id).ToList();
+        return _bookingRepository.GetByIdAndUserId(id,userid); 
     }
 
 
@@ -29,12 +35,12 @@ public class BookingService
     public ResultBoolString BookingSetDateBy(CreateBookingRequest request, Guid userId)
     {
         // Проверка пользователя
-        var userExists = _db.Users.Any(u => u.Id == userId);
+        var userExists = _userRepository.Exists(userId);
         if (!userExists) 
             return new ResultBoolString{Success = false, Error = "User not found"};
 
         // Проверка комнаты
-        var room = _db.Rooms.FirstOrDefault(r => r.Id == request.roomId);
+        var room = _roomRepository.GetById(request.roomId);
         if (room == null) 
             return new ResultBoolString{Success = false, Error = "Room not found"};
 
@@ -51,23 +57,12 @@ public class BookingService
             return new ResultBoolString{Success = false, Error = "Maximum booking period is 90 days"};
 
         // Пользователь уже создал такую же бронь
-        var duplicateBooking = _db.Bookings.Any(b =>
-            b.UserId == userId &&
-            b.RoomId == request.roomId &&
-            b.CheckIn == request.CheckIn &&
-            b.CheckOut == request.CheckOut &&
-            b.Status != BookingStatus.Cancelled);
-
-        //Бронирование уже есть
-        if (duplicateBooking) 
+        var duplicateBooking = _bookingRepository.IsDuplicateBooking(userId, request.roomId, request.CheckIn, request.CheckOut);
+        if (duplicateBooking)  //Бронирование уже есть
             return new ResultBoolString{Success = false, Error = "You already have this booking"};
 
         // Комната занята в выбранные даты
-        var roomBusy = _db.Bookings.Any(b =>
-            b.RoomId == request.roomId &&
-            b.Status == BookingStatus.Approved &&
-            request.CheckIn < b.CheckOut &&
-            request.CheckOut > b.CheckIn);
+        var roomBusy = _bookingRepository.IsRoomBusy(request.roomId, request.CheckIn, request.CheckOut);
         if (roomBusy) 
             return new ResultBoolString{Success = false, Error = "Room is already booked for these dates"};
 
@@ -82,9 +77,9 @@ public class BookingService
             Status = BookingStatus.Pending
         };
 
-        _db.Bookings.Add(booking);
-        _db.SaveChanges();
+        _bookingRepository.Add(booking);
+        _bookingRepository.SaveChanges();
 
-    return new ResultBoolString{Success = true, Error = null};
+            return new ResultBoolString{Success = true};
     }   
 }

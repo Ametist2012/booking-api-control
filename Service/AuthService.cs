@@ -5,17 +5,27 @@ namespace BookingApiControl.Services;
 
 public class AuthService
 {
-    private readonly AppDbContext _db;
     private readonly JwtTokenService _jwt;
-
-    public AuthService(AppDbContext db, JwtTokenService jwt) { _db = db;  _jwt = jwt; }
-
+    public readonly IBookingRepository _bookingRepository;
+    private readonly IRoomRepository _roomRepository;
+    private readonly IUserRepository _userRepository;
+    public AuthService(
+        JwtTokenService jwt,
+        IBookingRepository bookingRepository,
+        IRoomRepository roomRepository,
+        IUserRepository userRepository) 
+    {   
+        _jwt = jwt; 
+        _bookingRepository = bookingRepository; 
+        _roomRepository = roomRepository;
+        _userRepository = userRepository;
+    }
     
     
     public bool Register(RegisterRequest request)
     {
-        var userExists = _db.Users.Any(x => x.Email == request.Email);
-        if (userExists) return false;
+        var userExists = _userRepository.GetByEmail(request.Email);
+        if (userExists == null) return false;
 
         var user = new User
         {
@@ -26,8 +36,8 @@ public class AuthService
             Role = Role.User.ToString()
         };
 
-        _db.Users.Add(user);
-        _db.SaveChanges();
+        _userRepository.Add(user);
+        _userRepository.SaveChanges();
 
             return true;
     }
@@ -36,7 +46,7 @@ public class AuthService
 
     public string? Login(LoginRequest request)
     {
-        var user = _db.Users.FirstOrDefault(x => x.Email == request.Email);
+        var user = _userRepository.GetByEmail(request.Email);
         if (user == null) return null;
 
         bool passwordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);

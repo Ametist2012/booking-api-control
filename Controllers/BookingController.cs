@@ -36,7 +36,7 @@ public class BookingController : ControllerBase
         if (string.IsNullOrEmpty(userIdStr)) { return Unauthorized(); }
         var userId = Guid.Parse(userIdStr);
 
-        var result = _bookingService.GetBookingByIdCurUser(userId, id);
+        var result = _bookingService.GetBookingByIdCurUser(id, userId);
         return Ok(result);
     }
 

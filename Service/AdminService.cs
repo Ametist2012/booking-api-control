@@ -5,41 +5,46 @@ namespace BookingApiControl.Services;
 
 public class AdminService
 {
-    private readonly AppDbContext _db;
-
-    public AdminService(AppDbContext db) { _db = db; }
+    public readonly IBookingRepository _bookingRepository;
+    //private readonly IRoomRepository _roomRepository;
+    private readonly IUserRepository _userRepository;
+    public AdminService(
+        IBookingRepository bookingRepository,
+        //IRoomRepository roomRepository,
+        IUserRepository userRepository) 
+    {   
+        _bookingRepository = bookingRepository; 
+        //_roomRepository = roomRepository;
+        _userRepository = userRepository;
+    }
 
     public List<User> GetUsers()
     {
-        return _db.Users.ToList();
+        return _userRepository.GetAll();
     }
 
 
 
     public List<Booking> GetListBookings()
     {
-        return _db.Bookings.ToList();
+        return _bookingRepository.GetList();  
     }
 
 
     public ResultBoolString BookingsApproveUser(Guid BookingId)
     {
-        var booking = _db.Bookings.FirstOrDefault(x => x.Id == BookingId);
+        var booking = _bookingRepository.GetById(BookingId);
         if (booking == null) return new ResultBoolString{Success = false, Error = "Booking Id not found"};
 
         if (booking.Status != BookingStatus.Pending)
             return new ResultBoolString { Success = false, Error = "Only pending bookings can be approved" };
 
-        bool isBusy = _db.Bookings.Any(b =>
-            b.RoomId == booking.RoomId &&
-            b.Status == BookingStatus.Approved &&
-            booking.CheckIn < b.CheckOut &&
-            booking.CheckOut > b.CheckIn);
+        bool isBusy = _bookingRepository.IsRoomBusy(booking.RoomId, booking.CheckIn, booking.CheckOut);
         if (isBusy) return new ResultBoolString{Success = false, Error = "Room is already booked for selected dates"};
             
         booking.Status = BookingStatus.Approved;
 
-        _db.SaveChanges();
+        _bookingRepository.SaveChanges();
             return new ResultBoolString{Success = true, Error = null};
     }
 
@@ -47,7 +52,7 @@ public class AdminService
 
     public ResultBoolString BookingsRejectUser(Guid BookingId)
     {
-        var booking = _db.Bookings.FirstOrDefault(x => x.Id == BookingId);
+        var booking = _bookingRepository.GetById(BookingId);
         if (booking == null) return new ResultBoolString{Success = false, Error = "Booking Id not found"};
 
         if (booking.Status != BookingStatus.Pending)
@@ -55,18 +60,18 @@ public class AdminService
 
         booking.Status = BookingStatus.Rejected;
 
-        _db.SaveChanges();
+        _bookingRepository.SaveChanges();
             return new ResultBoolString{Success = true, Error = null};
     }
 
 
     public bool DelUserById(Guid id)
     {
-        var curUser = _db.Users.FirstOrDefault(y => y.Id == id);
+        var curUser = _userRepository.GetById(id);
         if (curUser == null) return false;
 
-        _db.Users.Remove(curUser);
-        _db.SaveChanges();
+        _userRepository.Delete(curUser);
+        _userRepository.SaveChanges();
             return true;
     }
 }
